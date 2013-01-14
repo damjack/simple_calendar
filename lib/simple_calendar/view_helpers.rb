@@ -10,7 +10,8 @@ module SimpleCalendar
           :month      => (params[:month] || Time.zone.now.month).to_i,
           :prev_text  => raw("&laquo;"),
           :next_text  => raw("&raquo;"),
-          :start_day  => :sunday
+          :start_day  => :sunday,
+          :per_month  => false
       }
       options.reverse_merge! opts
       events       ||= []
@@ -60,7 +61,7 @@ module SimpleCalendar
       content_tag(:table, :class => "table table-bordered table-striped calendar") do
         tags << month_header(selected_month, options)
         tags << content_tag(:thead, content_tag(:tr, I18n.t("date.abbr_day_names").collect { |name| content_tag :th, name, :class => (selected_month.month == Date.today.month && Date.today.strftime("%a") == name ? "current-day" : nil)}.join.html_safe))
-        tags << content_tag(:tbody, :'data-month'=>selected_month.month, :'data-year'=>selected_month.year) do
+        tags << content_tag(:tbody, :'data-month' => selected_month.month, :'data-year' => selected_month.year) do
 
           month.collect do |week|
             content_tag(:tr, :class => (week.include?(Date.today) ? "current-week week" : "week")) do
@@ -73,11 +74,11 @@ module SimpleCalendar
                 td_class << "future" if today < date
                 td_class << "wday-#{date.wday.to_s}" # <- to enable different styles for weekend, etc
 
-                content_tag(:td, :class => td_class.join(" "), :'data-date-iso'=>date.to_s, 'data-date'=>date.to_s.gsub('-', '/')) do
-                  content_tag(:div) do
+                content_tag(:td, :class => td_class.join(" "), :style => "width: 14%;", :'data-date-iso' => date.to_s, 'data-date' => date.to_s.gsub('-', '/')) do
+                  content_tag(:div, :style => "min-height: 145px;") do
                     divs = []
 
-                    concat content_tag(:div, date.day.to_s, :class=>"day_number")
+                    concat content_tag(:div, date.day.to_s, :class => "day_number")
                     divs << day_events(date, events).collect { |event| block.call(event) }
                     divs.join.html_safe
                   end #content_tag :div
@@ -100,14 +101,15 @@ module SimpleCalendar
 
     # Generates the header that includes the month and next and previous months
     def month_header(selected_month, options)
-      content_tag :h2 do
+      content_tag :h3 do
         previous_month = selected_month.advance :months => -1
         next_month = selected_month.advance :months => 1
         tags = []
 
-        tags << month_link(options[:prev_text], previous_month, {:class => "previous-month"})
         tags << "#{I18n.t("date.month_names")[selected_month.month]} #{selected_month.year}"
-        tags << month_link(options[:next_text], next_month, {:class => "next-month"})
+        tags << month_link(options[:next_text], next_month, {:class => "next-month #{options[:next_nav]}", :remote => (options[:remote] || false)})
+        tags << month_link(options[:prev_text], previous_month, {:class => "previous-month #{options[:prev_nav]}", :remote => (options[:remote] || false)})
+        #tags << month_link(options[:prev_text], previous_month, {:class => "previous-month", :remote => (options[:remote] || false)})
 
         tags.join.html_safe
       end
@@ -115,7 +117,7 @@ module SimpleCalendar
 
     # Generates the link to next and previous months
     def month_link(text, month, opts={})
-      link_to(text, "#{simple_calendar_path}?month=#{month.month}&year=#{month.year}", opts)
+      link_to(text, "#{simple_calendar_path}?per_month=#{opts[:per_month]}&month=#{month.month}&year=#{month.year}", opts)
     end
 
     # Returns the full path to the calendar
